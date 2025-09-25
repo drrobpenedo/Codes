@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ES↔EN Encoder/Decoder — All-in-One (Offline)</title>
+<meta name="description" content="Codificar/decodificar reversible + traducción ES↔EN con glosario ampliado. Interfaz bilingüe. 100% offline.">
+<style>
+  :root{--bg:#0e1220;--panel:#151a2c;--ink:#e9ecff;--muted:#aab0d4;--accent:#8fd3fe;--line:#222846}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+       background:radial-gradient(1000px 600px at -10% -20%,#1a2040 8%,#0e1220 55%),
+                  radial-gradient(1200px 800px at 120% 120%,#102034 10%,#0e1220 60%);color:var(--ink)}
+  header{padding:20px 16px;text-align:center}
+  header h1{margin:0;font-size:1.45rem}
+  header .sub{color:var(--muted);font-size:.92rem;margin-top:6px}
+  main{max-width:1100px;margin:0 auto;padding:16px}
+  .toprow{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:8px}
+  .grid{display:grid;gap:16px;grid-template-columns:1fr}
+  @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
+  .card{background:linear-gradient(180deg,#171c30,#14192b);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+  .title{font-weight:700;margin-bottom:8px}
+  label{font-size:.9rem;color:var(--muted)}
+  textarea{width:100%;min-height:180px;background:#0f1426;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:12px;font-size:1rem;resize:vertical}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  select,input[type="checkbox"],input[type="file"]{background:#0f1426;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:.95rem}
+  .btn{border:none;border-radius:12px;padding:12px 14px;font-weight:600;cursor:pointer;background:linear-gradient(180deg,#7fc5ff,#5aa9ff);color:#061225;transition:transform .05s ease}
+  .btn:hover{transform:translateY(-1px)}
+  .btn.secondary{background:linear-gradient(180deg,#a5b4fc,#818cf8);color:#0a0f1e}
+  .tiny{font-size:.82rem;color:var(--muted)}
+  .pill{display:inline-block;background:#0f1426;border:1px solid var(--line);padding:6px 10px;border-radius:999px}
+  footer{padding:20px 12px;text-align:center;color:var(--muted);font-size:.85rem}
+  .kbd{font-family:ui-monospace,Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+<header>
+  <h1 data-i="title">🔐 Codificador / Decodificador ES-EN — Todo en Uno</h1>
+  <div class="sub" data-i="subtitle">Cifrado reversible + traducción local con glosario ampliado (incluye frases de reuniones). 100% offline.</div>
+  <div class="toprow">
+    <label class="row pill">
+      <span data-i="uilang">Idioma de la interfaz:</span>
+      <select id="uiLang">
+        <option value="es">Español</option>
+        <option value="en">English</option>
+      </select>
+    </label>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="card">
+      <div class="title" data-i="inputTitle">Entrada</div>
+      <label for="inputText" data-i="inputLabel">Mensaje original (ES o EN)</label>
+      <textarea id="inputText" placeholder="Escribe aquí tu mensaje..."></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="encodeBtn" data-i="encodeBtn">Codificar</button>
+        <button class="btn secondary" id="resetBtn" data-i="resetBtn">Reset</button>
+      </div>
+      <div class="tiny" style="margin-top:8px" id="quickTips">
+        <span class="pill">“cómo está usted”</span> · <span class="pill">“la reunión es de urgencia y será mañana a las 10:30 de la mañana”</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="title" data-i="encodedTitle">Texto codificado</div>
+      <label for="encodedText" data-i="encodedLabel">Pegado/Salida codificada</label>
+      <textarea id="encodedText" placeholder="Aquí verás la codificación o pega un texto para decodificar…"></textarea>
+      <div class="row" style="margin-top:10px">
+        <select id="decodeLang">
+          <option value="auto" data-i="decAuto">Decodificar a: Auto (idioma original)</option>
+          <option value="es" data-i="decEs">Decodificar a: Español</option>
+          <option value="en" data-i="decEn">Decodificar a: English</option>
+        </select>
+        <label class="row pill"><input type="checkbox" id="translateToggle" style="margin-right:8px"><span data-i="decTrans">Decodificar + Traducir</span></label>
+        <button class="btn" id="decodeBtn" data-i="decodeBtn">Decodificar</button>
+      </div>
+      <div class="tiny" style="margin-top:8px" data-i="glossNote">La traducción usa un glosario local de frases (prioridad más largas) + palabras frecuentes; puedes ampliarlo y exportarlo.</div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="title" data-i="resultTitle">Resultado</div>
+    <label for="outputText" data-i="resultLabel">Salida</label>
+    <textarea id="outputText" placeholder="El resultado aparecerá aquí..." readonly></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn secondary" id="copyOut" data-i="copyBtn">Copiar resultado</button>
+      <span id="copyNote" class="tiny"></span>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <div class="title" data-i="glossTitle">Glosario (opcional)</div>
+    <div class="tiny" style="margin-bottom:8px" data-i="glossDesc">Exporta tu glosario a JSON o importa uno propio. Todo funciona sin conexión.</div>
+    <div class="row">
+      <button class="btn" id="exportBtn" data-i="exportBtn">Exportar glosario</button>
+      <label class="btn secondary" for="importFile" style="display:inline-block;cursor:pointer" data-i="importLbl">Importar glosario</label>
+      <input id="importFile" type="file" accept="application/json" style="display:none"/>
+      <span id="importNote" class="tiny"></span>
+    </div>
+  </section>
+</main>
+
+<footer><span data-i="foot">Cifrado: rotación + sustitución bijectiva (reversible). Traducción: frases longest-first + palabras. <span class="kbd">Offline</span>.</span></footer>
+
+<script>
+/* ============ I18N ============ */
+const I18N={
+  es:{title:'🔐 Codificador / Decodificador ES-EN — Todo en Uno',subtitle:'Cifrado reversible + traducción local con glosario ampliado (incluye frases de reuniones). 100% offline.',uilang:'Idioma de la interfaz:',inputTitle:'Entrada',inputLabel:'Mensaje original (ES o EN)',encodeBtn:'Codificar',resetBtn:'Reset',encodedTitle:'Texto codificado',encodedLabel:'Pegado/Salida codificada',decAuto:'Decodificar a: Auto (idioma original)',decEs:'Decodificar a: Español',decEn:'Decodificar a: English',decTrans:'Decodificar + Traducir',decodeBtn:'Decodificar',glossNote:'La traducción usa un glosario local de frases (prioridad más largas) + palabras frecuentes; puedes ampliarlo y exportarlo.',resultTitle:'Resultado',resultLabel:'Salida',copyBtn:'Copiar resultado',glossTitle:'Glosario (opcional)',glossDesc:'Exporta tu glosario a JSON o importa uno propio. Todo funciona sin conexión.',exportBtn:'Exportar glosario',importLbl:'Importar glosario',foot:'Cifrado: rotación + sustitución bijectiva (reversible). Traducción: frases longest-first + palabras. Offline.',copied:'✅ Copiado al portapapeles',copyErr:'❌ No se pudo copiar',glossOk:'✅ Glosario importado',glossBad:'❌ Archivo inválido'},
+  en:{title:'🔐 ES↔EN Encoder/Decoder — All-in-One',subtitle:'Reversible cipher + local translation with an expanded glossary (incl. meeting phrases). 100% offline.',uilang:'Interface language:',inputTitle:'Input',inputLabel:'Original message (ES or EN)',encodeBtn:'Encode',resetBtn:'Reset',encodedTitle:'Encoded text',encodedLabel:'Paste/Encoded output',decAuto:'Decode to: Auto (original language)',decEs:'Decode to: Español',decEn:'Decode to: English',decTrans:'Decode + Translate',decodeBtn:'Decode',glossNote:'Translation uses a local glossary: longest phrases first + frequent words; you can extend/export it.',resultTitle:'Result',resultLabel:'Output',copyBtn:'Copy output',glossTitle:'Glossary (optional)',glossDesc:'Export your glossary to JSON or import your own. Works offline.',exportBtn:'Export glossary',importLbl:'Import glossary',foot:'Cipher: rotation + bijective substitution (reversible). Translation: longest-first phrases + words. Offline.',copied:'✅ Copied to clipboard',copyErr:'❌ Copy failed',glossOk:'✅ Glossary imported',glossBad:'❌ Invalid file'}
+};
+
+const $=id=>document.getElementById(id);
+function setUI(lang){
+  document.querySelectorAll('[data-i]').forEach(el=>{
+    el.textContent = I18N[lang][el.getAttribute('data-i')];
+  });
+  $('encodedText').placeholder = (lang==='es')
+    ? 'Aquí verás la codificación o pega un texto para decodificar…'
+    : 'You will see the encoded output here, or paste text to decode…';
+  $('inputText').placeholder = (lang==='es')
+    ? 'Escribe aquí tu mensaje...'
+    : 'Type your message here...';
+}
+$('uiLang').addEventListener('change', e=> setUI(e.target.value));
+setUI('es');
+
+/* ===== Utilidades / helpers ===== */
+const normalize = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const toTitle   = s => s.replace(/\w\S*/g, w => w[0].toUpperCase()+w.slice(1).toLowerCase());
+function sentenceCase(s){ s = s.trim(); return s ? s[0].toUpperCase()+s.slice(1) : s; }
+
+/* ===== Cifrado reversible (con marcador §) ===== */
+const ABC='abcdefghijklmnopqrstuvwxyz';
+function rotShift(ch,k){
+  const i = ABC.indexOf(ch.toLowerCase());
+  if(i===-1) return ch;
+  const j = (i + k + 26) % 26;
+  const out = ABC[j];
+  return (ch===ch.toUpperCase()) ? out.toUpperCase() : out;
+}
+// Mapa 100% símbolos (evita ambigüedades)
+const symMap={a:'@',b:')',c:'{',d:'$',e:'3',f:'=',g:'9',h:'#',i:'!',j:']',k:'<',l:'|',m:'^',n:'~',o:'0',p:'?',q:'&',r:'2',s:'%',t:'+',u:'_',v:'\\',w:';',x:'*',y:':',z:'7'};
+const symUnmap=Object.fromEntries(Object.entries(symMap).map(([k,v])=>[v,k]));
+const SYMBOLS_SET=new Set(Object.values(symMap).map(String));
+const MARK='§'; // ⟵ marcador para distinguir símbolos codificados de puntuación real
+
+// Heurística de “parece codificado”
+function looksEncoded(s){
+  if(!s) return false;
+  if(s.includes(MARK)) return true;
+  const chars=[...s];
+  const symCount = chars.filter(ch => SYMBOLS_SET.has(ch.toLowerCase())).length;
+  return (symCount/Math.max(chars.length,1)) >= 0.25;
+}
+
+function encodePlain(text){
+  const rot=[...text].map(ch=>rotShift(ch,+5)).join('');
+  let out='';
+  for(const ch of rot){
+    const low = ch.toLowerCase();
+    out += ABC.includes(low) ? (MARK + symMap[low]) : ch; // ⟵ anteponer §
+  }
+  return out;
+}
+
+function decodePlain(cipher){
+  // Ruta nueva (con marcador) — preserva : reales (p.ej. 10:30)
+  if(cipher.includes(MARK)){
+    let tmp='';
+    for(let i=0;i<cipher.length;i++){
+      const ch=cipher[i];
+      if(ch===MARK && i+1<cipher.length){
+        const sym=cipher[i+1].toLowerCase();
+        if(sym in symUnmap){ tmp+=symUnmap[sym]; i++; continue; }
+      }
+      tmp+=ch;
+    }
+    return [...tmp].map(ch=>rotShift(ch,-5)).join('');
+  }
+  // Fallback legacy (sin marcador), con protección simple para tiempos 10:30
+  let tmp='';
+  for(let i=0;i<cipher.length;i++){
+    const ch=cipher[i];
+    const low=ch.toLowerCase();
+    if(ch===':' && i>0 && i<cipher.length-1 && /\d/.test(cipher[i-1]) && /\d/.test(cipher[i+1])){
+      tmp+=ch; continue;
+    }
+    tmp += (symUnmap[low] ?? ch);
+  }
+  return [...tmp].map(ch=>rotShift(ch,-5)).join('');
+}
+
+/* ===== Glosario ES↔EN ===== */
+let phrasePairs=[
+  // Reuniones / negocios
+  ['la reunion es de urgencia y sera manana a las 10:30 de la manana','the meeting is urgent and will be tomorrow at 10:30 in the morning'],
+  ['la reunion es de urgencia','the meeting is urgent'],
+  ['reunion de emergencia','emergency meeting'],
+  ['la reunion fue pospuesta','the meeting was postponed'],
+  ['la reunion se adelanto','the meeting was moved earlier'],
+  ['la reunion se retraso','the meeting was delayed'],
+  ['enviare el acta de la reunion','i will send the meeting minutes'],
+  ['compartire el enlace de zoom','i will share the zoom link'],
+  ['reunion presencial','in-person meeting'],
+  ['reunion virtual','virtual meeting'],
+  ['a las','at'],['de la manana','in the morning'],['de la tarde','in the afternoon'],['de la noche','at night'],['es de urgencia','is urgent'],
+
+  // Saludos / básicos
+  ['hola','hello'],['buenos dias','good morning'],['buenas tardes','good afternoon'],['buenas noches','good evening'],
+  ['como esta usted','how are you'],['como estas','how are you'],['que tal','how is it going'],
+  ['mucho gusto','nice to meet you'],['un placer','a pleasure'],['gracias','thank you'],['muchas gracias','thank you very much'],
+  ['de nada','you are welcome'],['por favor','please'],['con permiso','excuse me'],['disculpe','excuse me'],
+  ['lo siento','i am sorry'],['no hay problema','no problem'],
+  ['si, por favor','yes, please'],['no, gracias','no, thank you'],
+  ['como te llamas','what is your name'],['me llamo','my name is'],
+  ['de donde eres','where are you from'],['soy de','i am from'],
+  ['no entiendo','i do not understand'],['puede repetir','can you repeat'],
+
+  // Direcciones / tiempo
+  ['donde esta el bano','where is the bathroom'],['donde esta la estacion','where is the station'],
+  ['cuanto cuesta','how much is it'],['que hora es','what time is it'],
+  ['hoy','today'],['manana','tomorrow'],['ayer','yesterday'],
+
+  // Estados
+  ['estoy bien','i am fine'],['estoy mal','i am not well'],['tengo hambre','i am hungry'],
+  ['tengo sed','i am thirsty'],['estoy cansado','i am tired'],['estoy ocupado','i am busy'],
+
+  // Otros
+  ['buen trabajo','good job'],['buen provecho','enjoy your meal'],['buen viaje','have a good trip'],['feliz cumpleanos','happy birthday'],
+
+  // Inversas EN→ES explícitas
+  ['how are you','como estas'],['how are you doing','como estas'],
+  ['nice to meet you','mucho gusto'],['you are welcome','de nada'],['excuse me','disculpe'],
+  ['i am sorry','lo siento'],['no problem','no hay problema'],['where is the bathroom','donde esta el bano'],
+  ['how much is it','cuanto cuesta'],['what time is it','que hora es'],
+  ['i am hungry','tengo hambre'],['i am thirsty','tengo sed'],['i am tired','estoy cansado'],
+  ['happy birthday','feliz cumpleanos']
+];
+
+let wordPairsES2EN=[
+  ['yo','i'],['tu','you'],['usted','you'],['el','he'],['ella','she'],['nosotros','we'],['ellos','they'],
+  ['si','yes'],['no','no'],['y','and'],['o','or'],['pero','but'],['porque','because'],['muy','very'],
+  ['tambien','also'],['solo','only'],['aqui','here'],['alli','there'],['hoy','today'],['ayer','yesterday'],['manana','tomorrow'],
+  ['ser','be'],['estar','be'],['tener','have'],['hacer','do'],['ir','go'],['venir','come'],['querer','want'],['poder','can'],
+  ['decir','say'],['ver','see'],['dar','give'],['saber','know'],['pensar','think'],['trabajar','work'],['comer','eat'],['beber','drink'],
+  ['casa','house'],['trabajo','work'],['dinero','money'],['tiempo','time'],['dia','day'],['noche','night'],['amigo','friend'],['familia','family'],
+  ['bueno','good'],['malo','bad'],['grande','big'],['pequeno','small'],['nuevo','new'],['viejo','old'],['feliz','happy'],['triste','sad'],
+  ['que','what'],['quien','who'],['donde','where'],['cuando','when'],['como','how'],['por que','why'],
+  ['agua','water'],['comida','food'],['cafe','coffee'],['te','tea'],['pan','bread'],['carne','meat'],
+  ['taxi','taxi'],['bus','bus'],['tren','train'],['aeropuerto','airport'],['hotel','hotel'],
+  ['reunion','meeting'],['urgencia','urgency'],['urgente','urgent'],['sera','will be'],['acta','minutes'],['enlace','link'],['presencial','in-person'],['virtual','virtual']
+];
+
+let extrasEN2ES=[
+  ['please','por favor'],['thanks','gracias'],['thank','gracias'],['hello','hola'],['good','bueno'],
+  ['morning','mañana'],['afternoon','tarde'],['evening','noche'],
+  ['today','hoy'],['tomorrow','mañana'],['yesterday','ayer'],
+  ['friend','amigo'],['family','familia'],['house','casa'],['money','dinero'],
+  ['food','comida'],['water','agua'],['coffee','cafe'],['tea','te'],['bread','pan'],['meat','carne'],
+  ['airport','aeropuerto'],['station','estacion'],['hotel','hotel'],['train','tren'],['bus','bus'],['taxi','taxi'],
+  ['work','trabajo'],['time','tiempo'],['day','dia'],['night','noche'],
+  ['meeting','reunion'],['urgent','urgente'],['link','enlace'],['minutes','acta'],['in-person','presencial'],['virtual','virtual']
+];
+
+function buildDictionaries(){
+  const normalize = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const normPairs = phrasePairs.map(([a,b])=>[normalize(a.toLowerCase()), normalize(b.toLowerCase())]);
+  const phraseDictES2EN = new Map(), phraseDictEN2ES = new Map();
+  for(const [es,en] of normPairs){phraseDictES2EN.set(es,en);phraseDictEN2ES.set(en,es);}
+  const wES2EN = new Map(wordPairsES2EN.map(([a,b])=>[normalize(a.toLowerCase()), normalize(b.toLowerCase())]));
+  const wEN2ES = new Map([...Array.from(wES2EN.entries()).map(([es,en])=>[en,es]), ...extrasEN2ES.map(([a,b])=>[normalize(a), normalize(b)])]);
+  const phrasesES = Array.from(phraseDictES2EN.keys()).sort((a,b)=> b.length - a.length);
+  const phrasesEN = Array.from(phraseDictEN2ES.keys()).sort((a,b)=> b.length - a.length);
+  return { phraseDictES2EN, phraseDictEN2ES, wES2EN, wEN2ES, phrasesES, phrasesEN };
+}
+let dict = buildDictionaries();
+
+function escapeReg(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function translateSmart(text,target){
+  const normalize = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const cleanOrig = text.trim();
+  const clean     = normalize(cleanOrig).toLowerCase();
+
+  const useES = (target==='en'); // ES→EN
+  const phraseDict = useES ? dict.phraseDictES2EN : dict.phraseDictEN2ES;
+  const phrases    = useES ? dict.phrasesES       : dict.phrasesEN;
+  const wmap       = useES ? dict.wES2EN          : dict.wEN2ES;
+
+  let out = clean;
+  for(const p of phrases){
+    const re = new RegExp(`\\b${escapeReg(p)}\\b`,'g');
+    if(re.test(out)) out = out.replace(re, phraseDict.get(p));
+  }
+  out = out.split(/(\b)/).map(tok=>{
+    const t = tok.trim();
+    if(!t || (/\W/.test(tok) && tok!=='_')) return tok;
+    const n = normalize(tok.toLowerCase());
+    return wmap.get(n) || tok;
+  }).join('');
+
+  if(target==='en'){
+    const tokenCount=out.split(/\s+/).filter(Boolean).length;
+    out = tokenCount<=10 ? toTitle(out) : sentenceCase(out);
+  }else{
+    out = sentenceCase(out);
+  }
+  return out;
+}
+
+/* ===== UI y eventos ===== */
+const inputText=$('inputText'), encodedText=$('encodedText'), outputText=$('outputText');
+const decodeLang=$('decodeLang'), translateToggle=$('translateToggle');
+const copyOut=$('copyOut'), copyNote=$('copyNote'), exportBtn=$('exportBtn'), importFile=$('importFile'), importNote=$('importNote');
+
+$('encodeBtn').addEventListener('click', ()=>{
+  const txt = inputText.value || '';
+  const enc = encodePlain(txt);
+  encodedText.value = enc;
+  outputText.value  = enc;
+});
+
+$('decodeBtn').addEventListener('click', ()=>{
+  const enc = encodedText.value || '';
+  const dec = decodePlain(enc);
+
+  const mode = decodeLang.value; // auto | es | en
+  let out = dec;
+  if(mode==='es' && translateToggle.checked) out = translateSmart(dec,'es');
+  else if(mode==='en' && translateToggle.checked) out = translateSmart(dec,'en');
+
+  outputText.value = out;
+});
+
+$('resetBtn').addEventListener('click', ()=>{
+  inputText.value=''; encodedText.value=''; outputText.value='';
+  translateToggle.checked=false; decodeLang.value='auto';
+  copyNote.textContent='';
+});
+
+$('copyOut').addEventListener('click', async ()=>{
+  try{
+    await navigator.clipboard.writeText(outputText.value || '');
+    const lang=$('uiLang').value;
+    copyNote.textContent=(lang==='es')? I18N.es.copied : I18N.en.copied;
+  }catch(e){
+    const lang=$('uiLang').value;
+    copyNote.textContent=(lang==='es')? I18N.es.copyErr : I18N.en.copyErr;
+  }
+  setTimeout(()=> copyNote.textContent='', 2000);
+});
+
+/* Exportar / Importar glosario */
+exportBtn.addEventListener('click', ()=>{
+  const payload = { phrasePairs, wordPairsES2EN, extrasEN2ES };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'glosario-es-en.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+importFile.addEventListener('change', async (e)=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  try{
+    const text = await f.text();
+    const data = JSON.parse(text);
+    if(Array.isArray(data.phrasePairs)) phrasePairs = data.phrasePairs;
+    if(Array.isArray(data.wordPairsES2EN)) wordPairsES2EN = data.wordPairsES2EN;
+    if(Array.isArray(data.extrasEN2ES)) extrasEN2ES = data.extrasEN2ES;
+    dict = buildDictionaries();
+    const lang=$('uiLang').value;
+    importNote.textContent = (lang==='es') ? I18N.es.glossOk : I18N.en.glossOk;
+  }catch(err){
+    const lang=$('uiLang').value;
+    importNote.textContent = (lang==='es') ? I18N.es.glossBad : I18N.en.glossBad;
+  }
+  setTimeout(()=> importNote.textContent='', 2500);
+});
+
+/* Precarga de ejemplo */
+inputText.value='la reunión es de urgencia y será mañana a las 10:30 de la mañana';
+</script>
+</body>
+</html>
